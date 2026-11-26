@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">LexShield</string>
+    <string name="app_tagline">Advocate Safety, SOS &amp; Legal Network</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_sos">SOS</string>
+    <string name="nav_network">Network</string>
+    <string name="nav_legal">Legal</string>
+    <string name="nav_profile">Profile</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="sos_disclaimer">LexShield is a coordination and communication tool. It does not replace police dispatch or guarantee emergency rescue. In immediate danger, call local emergency services (112) directly.</string>
+    <string name="digital_id_disclaimer">Platform-issued advocate identity card — not a government-issued ID or official Bar Council credential.</string>
+    <string name="legal_disclaimer">Informational summary only — not legal advice. Always verify against official court records.</string>
+    <string name="verification_platform_label">Platform verified – manual document review</string>
+    <string name="feed_confidentiality_notice">Professional Conduct: Never post confidential client details, privileged communications, or sealed case filings.</string>
+</resources>

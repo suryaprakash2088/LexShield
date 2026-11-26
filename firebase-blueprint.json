@@ -1,0 +1,482 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private advocate profile, enrolment verification, consent flags, and E2EE key metadata.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "platformId": { "type": "string", "description": "Platform advocate identifier ADV-XXXX" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "courtLocation": { "type": "string" },
+        "practiceAreas": { "type": "array" },
+        "yearsOfPractice": { "type": "integer" },
+        "bio": { "type": "string" },
+        "barCouncil": { "type": "string" },
+        "enrolmentNumberMasked": { "type": "string" },
+        "enrolmentDate": { "type": "string" },
+        "evidenceDocName": { "type": "string" },
+        "verificationStatus": {
+          "type": "string",
+          "enum": [
+            "NOT_SUBMITTED",
+            "SUBMITTED",
+            "UNDER_REVIEW",
+            "MORE_INFO_REQUIRED",
+            "APPROVED",
+            "REJECTED",
+            "SUSPENDED",
+            "APPEAL_PENDING"
+          ]
+        },
+        "verificationNote": { "type": "string" },
+        "e2eePublicKeyB64": { "type": "string" },
+        "e2eeKeyFingerprint": { "type": "string" },
+        "nearbyOptIn": { "type": "boolean" },
+        "locationConsent": { "type": "boolean" },
+        "discoverable": { "type": "boolean" },
+        "feedPublic": { "type": "boolean" },
+        "premiumActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "platformId",
+        "verificationStatus",
+        "nearbyOptIn",
+        "locationConsent",
+        "discoverable",
+        "feedPublic",
+        "premiumActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdvocateCard": {
+      "title": "AdvocateCard",
+      "description": "Discoverable advocate profile card and E2EE public key directory entry without PII.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "platformId": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "courtLocation": { "type": "string" },
+        "practiceAreas": { "type": "array" },
+        "verificationStatus": { "type": "string" },
+        "nearbyOptIn": { "type": "boolean" },
+        "discoverable": { "type": "boolean" },
+        "e2eePublicKeyB64": { "type": "string" },
+        "e2eeKeyFingerprint": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "platformId",
+        "verificationStatus",
+        "nearbyOptIn",
+        "discoverable",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "EmergencyContact": {
+      "title": "EmergencyContact",
+      "description": "User-managed emergency contact for SOS SMS fallback and alert records.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "relationship": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "phoneNumber", "relationship", "enabled", "createdAt", "updatedAt"]
+    },
+    "ConsentRecord": {
+      "title": "ConsentRecord",
+      "description": "Purpose-specific privacy consent audit entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "purpose": { "type": "string" },
+        "policyVersion": { "type": "string" },
+        "granted": { "type": "boolean" },
+        "sourceScreen": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "purpose", "policyVersion", "granted", "sourceScreen", "createdAt", "updatedAt"]
+    },
+    "SosIncident": {
+      "title": "SosIncident",
+      "description": "Emergency SOS incident with category A/B, staged radius, live coordinates, and responder coordination.",
+      "type": "object",
+      "properties": {
+        "ownerUserId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "ownerPlatformId": { "type": "string" },
+        "ownerVerified": { "type": "boolean" },
+        "idempotencyKey": { "type": "string" },
+        "category": { "type": "string", "enum": ["A", "B"] },
+        "state": { "type": "string", "enum": ["ACTIVE", "ESCALATED", "RESOLVED", "CANCELLED"] },
+        "description": { "type": "string" },
+        "coarseArea": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "accuracyM": { "type": "number" },
+        "locationShared": { "type": "boolean" },
+        "broadcastActive": { "type": "boolean" },
+        "currentRadiusKm": { "type": "integer" },
+        "alertedCount": { "type": "integer" },
+        "smsChannelStatus": { "type": "string" },
+        "pushChannelStatus": { "type": "string" },
+        "responderUids": { "type": "array" },
+        "closureReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "resolvedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUserId",
+        "ownerName",
+        "ownerPlatformId",
+        "ownerVerified",
+        "idempotencyKey",
+        "category",
+        "state",
+        "locationShared",
+        "broadcastActive",
+        "currentRadiusKm",
+        "alertedCount",
+        "smsChannelStatus",
+        "pushChannelStatus",
+        "responderUids",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "IncidentResponder": {
+      "title": "IncidentResponder",
+      "description": "Responder state progression for an SOS incident.",
+      "type": "object",
+      "properties": {
+        "incidentId": { "type": "string" },
+        "ownerUserId": { "type": "string" },
+        "responderUserId": { "type": "string" },
+        "responderName": { "type": "string" },
+        "responderPlatformId": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["ALERTED", "ACCEPTED", "ON_THE_WAY", "REACHED", "DECLINED", "CANCELLED"]
+        },
+        "note": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "accuracyM": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "incidentId",
+        "ownerUserId",
+        "responderUserId",
+        "responderName",
+        "responderPlatformId",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "EncryptedIncidentMessage": {
+      "title": "EncryptedIncidentMessage",
+      "description": "End-to-end encrypted message inside an SOS incident using ECDH P-256 + AES-256-GCM.",
+      "type": "object",
+      "properties": {
+        "incidentId": { "type": "string" },
+        "ownerUserId": { "type": "string" },
+        "participantUids": { "type": "array" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "ciphertextB64": { "type": "string" },
+        "ivB64": { "type": "string" },
+        "senderPublicKeyB64": { "type": "string" },
+        "senderKeyFingerprint": { "type": "string" },
+        "protocolVersion": { "type": "string" },
+        "wrappedKeys": { "type": "object" },
+        "messageType": { "type": "string", "enum": ["TEXT", "NOTE", "MEDIA_META"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "incidentId",
+        "ownerUserId",
+        "participantUids",
+        "senderId",
+        "senderName",
+        "ciphertextB64",
+        "ivB64",
+        "senderPublicKeyB64",
+        "senderKeyFingerprint",
+        "protocolVersion",
+        "wrappedKeys",
+        "messageType",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "IncidentEvidence": {
+      "title": "IncidentEvidence",
+      "description": "User-entered incident note, voice memo metadata, or Photo Picker image metadata.",
+      "type": "object",
+      "properties": {
+        "incidentId": { "type": "string" },
+        "ownerUserId": { "type": "string" },
+        "participantUids": { "type": "array" },
+        "uploaderId": { "type": "string" },
+        "uploaderName": { "type": "string" },
+        "mediaType": { "type": "string", "enum": ["NOTE", "VOICE", "PHOTO"] },
+        "caption": { "type": "string" },
+        "durationSec": { "type": "integer" },
+        "sha256Checksum": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "incidentId",
+        "ownerUserId",
+        "participantUids",
+        "uploaderId",
+        "uploaderName",
+        "mediaType",
+        "caption",
+        "durationSec",
+        "sha256Checksum",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "IncidentEvent": {
+      "title": "IncidentEvent",
+      "description": "Audit timeline event for an SOS incident.",
+      "type": "object",
+      "properties": {
+        "incidentId": { "type": "string" },
+        "ownerUserId": { "type": "string" },
+        "participantUids": { "type": "array" },
+        "actorId": { "type": "string" },
+        "actorName": { "type": "string" },
+        "eventType": { "type": "string" },
+        "summary": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["incidentId", "ownerUserId", "participantUids", "actorId", "actorName", "eventType", "summary", "createdAt"]
+    },
+    "FeedPost": {
+      "title": "FeedPost",
+      "description": "Moderated professional advocate network post.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPlatformId": { "type": "string" },
+        "authorVerified": { "type": "boolean" },
+        "courtTag": { "type": "string" },
+        "city": { "type": "string" },
+        "body": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["NETWORK", "CONNECTIONS"] },
+        "likeCount": { "type": "integer" },
+        "commentCount": { "type": "integer" },
+        "likedByUids": { "type": "array" },
+        "reportedByUids": { "type": "array" },
+        "moderationStatus": { "type": "string", "enum": ["PUBLISHED", "UNDER_REVIEW", "REMOVED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "authorId",
+        "authorName",
+        "authorPlatformId",
+        "authorVerified",
+        "courtTag",
+        "body",
+        "visibility",
+        "likeCount",
+        "commentCount",
+        "likedByUids",
+        "reportedByUids",
+        "moderationStatus",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FeedComment": {
+      "title": "FeedComment",
+      "description": "Comment on a professional network post.",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPlatformId": { "type": "string" },
+        "body": { "type": "string" },
+        "visible": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "authorId", "authorName", "authorPlatformId", "body", "visible", "createdAt"]
+    },
+    "LegalUpdateItem": {
+      "title": "LegalUpdateItem",
+      "description": "Reviewed legal update or judgment summary with official source attribution.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "title": { "type": "string" },
+        "court": { "type": "string" },
+        "caseNumber": { "type": "string" },
+        "decisionDate": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "summary": { "type": "string" },
+        "body": { "type": "string" },
+        "reviewerName": { "type": "string" },
+        "reviewStatus": { "type": "string", "enum": ["PUBLISHED"] },
+        "tags": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "authorId",
+        "title",
+        "court",
+        "caseNumber",
+        "decisionDate",
+        "sourceUrl",
+        "summary",
+        "body",
+        "reviewerName",
+        "reviewStatus",
+        "tags",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SosAlert": {
+      "title": "SosAlert",
+      "description": "Immediate Play Services GPS-backed SOS emergency alert document.",
+      "type": "object",
+      "properties": {
+        "ownerUserId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "ownerPlatformId": { "type": "string" },
+        "category": { "type": "string", "enum": ["A", "B"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "RESOLVED", "CANCELLED"] },
+        "message": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "accuracyM": { "type": "number" },
+        "locationSource": { "type": "string" },
+        "monitoringActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUserId",
+        "ownerName",
+        "ownerPlatformId",
+        "category",
+        "status",
+        "lat",
+        "lng",
+        "accuracyM",
+        "locationSource",
+        "monitoringActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SafetyMonitoringSession": {
+      "title": "SafetyMonitoringSession",
+      "description": "Real-time safety monitoring GPS telemetry streamed by foreground service.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "active": { "type": "boolean" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "accuracyM": { "type": "number" },
+        "locationSource": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "active", "lat", "lng", "accuracyM", "locationSource", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private advocate profile, verification record, and consent flags."
+    },
+    "/users/{userId}/emergency_contacts/{contactId}": {
+      "schema": { "$ref": "#/entities/EmergencyContact" },
+      "description": "User-owned emergency contact list."
+    },
+    "/users/{userId}/consents/{consentId}": {
+      "schema": { "$ref": "#/entities/ConsentRecord" },
+      "description": "User-owned purpose-specific consent records."
+    },
+    "/advocate_directory/{userId}": {
+      "schema": { "$ref": "#/entities/AdvocateCard" },
+      "description": "Discoverable advocate cards and E2EE public keys without PII."
+    },
+    "/sos_incidents/{incidentId}": {
+      "schema": { "$ref": "#/entities/SosIncident" },
+      "description": "Active and historical SOS emergency incidents."
+    },
+    "/sos_incidents/{incidentId}/responders/{responderId}": {
+      "schema": { "$ref": "#/entities/IncidentResponder" },
+      "description": "Responder acceptance and live status progression per incident."
+    },
+    "/sos_incidents/{incidentId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/EncryptedIncidentMessage" },
+      "description": "End-to-end encrypted incident messages."
+    },
+    "/sos_incidents/{incidentId}/evidence/{evidenceId}": {
+      "schema": { "$ref": "#/entities/IncidentEvidence" },
+      "description": "Incident notes, voice memo metadata, and Photo Picker evidence metadata."
+    },
+    "/sos_incidents/{incidentId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/IncidentEvent" },
+      "description": "Timestamped audit timeline events for an SOS incident."
+    },
+    "/feed_posts/{postId}": {
+      "schema": { "$ref": "#/entities/FeedPost" },
+      "description": "Professional networking posts with moderation metadata."
+    },
+    "/feed_posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/FeedComment" },
+      "description": "Comments on professional networking posts."
+    },
+    "/legal_updates/{itemId}": {
+      "schema": { "$ref": "#/entities/LegalUpdateItem" },
+      "description": "Curated and reviewed Supreme Court / High Court legal updates."
+    },
+    "/sos_alerts/{alertId}": {
+      "schema": { "$ref": "#/entities/SosAlert" },
+      "description": "Dedicated immediate SOS emergency alerts with Play Services GPS coordinates."
+    },
+    "/users/{userId}/safety_monitoring/{sessionId}": {
+      "schema": { "$ref": "#/entities/SafetyMonitoringSession" },
+      "description": "User-scoped live safety monitoring telemetry streamed by foreground service."
+    }
+  }
+}

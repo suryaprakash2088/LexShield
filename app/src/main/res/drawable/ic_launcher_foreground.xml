@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer Sovereign Gold Shield -->
+    <path
+        android:fillColor="#E2B857"
+        android:pathData="M54,22 L78,31 L78,53 C78,69 67.5,81 54,86 C40.5,81 30,69 30,53 L30,31 Z" />
+    <!-- Inner Judicial Navy Shield -->
+    <path
+        android:fillColor="#0D1B2A"
+        android:pathData="M54,27 L73,34.5 L73,53 C73,66 64.5,76 54,80.5 C43.5,76 35,66 35,53 L35,34.5 Z" />
+    <!-- Center Pillar & Plinth -->
+    <path
+        android:fillColor="#FAF8F5"
+        android:pathData="M52.2,37 L55.8,37 L55.8,68 L52.2,68 Z" />
+    <path
+        android:fillColor="#E2B857"
+        android:pathData="M45,68 L63,68 L65,71.5 L43,71.5 Z" />
+    <!-- Scales Crossbeam -->
+    <path
+        android:fillColor="#FAF8F5"
+        android:pathData="M39,43 L69,43 L69,46 L39,46 Z" />
+    <!-- Left Scale Pan -->
+    <path
+        android:fillColor="#E2B857"
+        android:pathData="M42,46 L46.5,56 L37.5,56 Z" />
+    <path
+        android:fillColor="#FAF8F5"
+        android:pathData="M37,56 C37,60.5 47,60.5 47,56 Z" />
+    <!-- Right Scale Pan -->
+    <path
+        android:fillColor="#E2B857"
+        android:pathData="M66,46 L70.5,56 L61.5,56 Z" />
+    <path
+        android:fillColor="#FAF8F5"
+        android:pathData="M61,56 C61,60.5 71,60.5 71,56 Z" />
+    <!-- SOS Beacon Crest -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M54,33 m-3.2,0 a3.2,3.2 0 1,0 6.4,0 a3.2,3.2 0 1,0 -6.4,0" />
+</vector>

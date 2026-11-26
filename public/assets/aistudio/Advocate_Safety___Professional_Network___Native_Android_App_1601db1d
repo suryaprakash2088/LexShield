@@ -1,0 +1,1043 @@
+﻿NATIVE ANDROID APPLICATION
+
+
+Advocate Safety &
+Professional Network
+PRODUCT REQUIREMENTS DOCUMENT (PRD)
+
+Version 1.0  |  Baseline Draft  |  26 November 2026
+Prepared for Product, UX, Engineering, QA, Legal & Operations
+
+
+ 
+Document Control
+Field
+	Value
+	Product
+	Advocate Safety & Professional Network – Native Android App
+	Version / status
+	1.0 – Baseline draft for stakeholder validation
+	Platform
+	Native Android; backend services and web admin portal support the mobile app
+	Audience
+	Client, product, legal/compliance, UX/UI, Android, backend, QA, DevOps and operations
+	Scope caveat
+	Subject to legal review, client-supplied data, authorized APIs, platform permissions and final technical discovery.
+	 
+Revision History
+Version
+	Date
+	Description
+	1.0
+	26-Nov-2026
+	Initial comprehensive requirements baseline
+	 
+Contents
+1. Executive Summary
+2. Vision, Goals & Success Measures
+3. Scope, Assumptions & Dependencies
+4. User Roles & Permissions
+5. User Journeys
+6. Functional Requirements
+7. Detailed Feature Requirements
+8. UX, Navigation & Screens
+9. SOS Lifecycle & Business Rules
+10. Data Model
+11. Backend APIs
+12. Native Android Architecture
+13. Integrations
+14. Security, Privacy & Compliance
+15. Non-Functional Requirements
+16. Offline & Notification Behaviour
+17. Admin Portal
+18. Analytics
+19. QA & Acceptance Criteria
+20. Delivery Plan, Risks & Open Decisions
+Appendices
+
+
+ 
+1. Executive Summary
+The product is a Native Android application for advocates combining emergency assistance, verified professional identity, location-aware responder coordination, incident evidence capture, legal information and professional networking. The central experience allows an advocate to raise an SOS, notify selected contacts and eligible nearby verified advocates, share live location when permitted, and track responder progress.
+The platform also provides advocate profiles and digital IDs, manual Bar Council enrolment verification, a police/officer directory, SOS history, a moderated professional feed, legal blog/judgment updates and optional premium WhatsApp sharing.
+The app must not represent itself as an official emergency service, police dispatch system, guaranteed rescue service or authoritative Bar Council verification source unless separately authorized. Response targets are operational targets, not guarantees.
+1.1 Objectives
+·       Make SOS activation fast, clear, accessible and auditable.
+·       Build trust through transparent manual verification and accurate identity status.
+·       Coordinate nearby assistance using consent-based, time-limited location sharing.
+·       Maintain incident timelines, responder states and communication records.
+·       Support professional networking and curated legal information with moderation and source attribution.
+·       Minimise collection and disclosure of sensitive personal, location and incident data.
+1.2 Emergency Categories
+Category
+	Definition
+	System handling
+	A
+	Urgent response target under 30 minutes.
+	High-priority alert and escalation policy; target is not a guarantee.
+	B
+	Response may be required after one hour.
+	Configured lower-urgency queue; user can escalate at any time.
+	 
+Users must not be discouraged from contacting local emergency services directly, regardless of category.
+2. Vision, Goals & Success Measures
+Vision: a dependable digital safety and professional collaboration platform that helps advocates manage professional identity, raise emergencies, coordinate assistance and access relevant legal updates.
+Goal
+	Measure
+	Measurement guidance
+	Fast activation
+	Median time from SOS screen to confirmed incident
+	Measure separately from provider delivery.
+	Alert reliability
+	Push/SMS submission, failure and receipt status
+	Do not equate provider acceptance with delivery/read.
+	Responder coordination
+	Time to first acceptance; status progression
+	Report by category and geography.
+	Location usefulness
+	Incidents with usable, sufficiently fresh location
+	Track permission and accuracy states.
+	Identity trust
+	Verification turnaround, rejection and appeal rates
+	Set operational SLA with client.
+	Community safety
+	Reports, moderation response time, repeat abuse
+	Define thresholds before launch.
+	Legal content quality
+	Published items with source and reviewer
+	Require source attribution and approval.
+	 
+3. Scope, Assumptions & Dependencies
+3.1 In Scope
+·       All 17 requested feature groups, including identity, SOS, location, emergency communications, responder coordination, networking, legal content and premium sharing.
+·       Native Android advocate-facing application.
+·       Backend APIs, database, notification orchestration, media storage and audit services.
+·       Web admin console for manual verification, directory/content management, moderation and incident operations.
+3.2 Out of Scope Unless Separately Approved
+·       Automated Bar Council verification without an authorized API or agreement.
+·       Police dispatch integration, staffed call centre or guaranteed emergency response.
+·       Covert recording or background surveillance outside an active, disclosed SOS.
+·       Legal advice or a guarantee that legal summaries are exhaustive or authoritative.
+·       iOS app or public website.
+3.3 Assumptions
+·       Client supplies branding, emergency policies, legal disclaimers, approved contact templates and escalation ownership.
+·       Client supplies and validates police station/officer data and assigns a maintenance owner.
+·       Manual verification staff, evidence checklist, decision matrix and appeal process are available.
+·       Google Maps credentials, billing and API restrictions are configured by client.
+·       WhatsApp functionality uses supported Android sharing/WhatsApp capabilities or an approved Business Platform integration; unsupported bulk automation is not assumed.
+3.4 Dependencies
+Dependency
+	Owner
+	Impact
+	OTP / SMS provider
+	Client + backend
+	Login and emergency SMS depend on provider, sender registration and carrier delivery.
+	FCM
+	Backend
+	Push is best-effort and subject to device/network settings.
+	Google Maps Platform
+	Client + Android
+	Requires API key, billing, quota, permissions and disclosures.
+	Manual verification policy
+	Client/legal/operations
+	Required before enrolment review launches.
+	Police/officer directory
+	Client
+	Feature quality depends on validated and refreshed records.
+	WhatsApp policy/API
+	Client/product
+	Sharing and broadcast depend on app availability, opt-in and policy.
+	Legal content sources
+	Client/legal/editorial
+	Publishing requires reliable source, attribution and rights review.
+	 
+4. User Roles & Permissions
+Role
+	Capabilities
+	Controls
+	Applicant / unverified advocate
+	OTP login, profile setup, submit enrolment evidence, view review status.
+	Never label as verified; SOS access policy to be explicitly decided.
+	Verified advocate
+	Verified profile/ID, SOS, opted-in responder participation, feed and legal content.
+	Incident access limited by ownership/assignment.
+	Responder
+	Accept/decline SOS, update status, communicate with incident owner.
+	Location and incident detail limited to active assignment.
+	Verification admin
+	Review evidence, request changes, approve/reject/suspend.
+	Least privilege; all decisions audited.
+	Emergency operations admin
+	Monitor authorized active incidents, escalation and directory.
+	Sensitive media access requires role and audit.
+	Editor/legal reviewer
+	Draft, review and publish legal content.
+	Two-stage approval recommended.
+	Moderator
+	Review reports, remove content, restrict accounts and process appeals.
+	Actions require reason and audit.
+	Super admin
+	Roles, configuration, templates, audit and feature flags.
+	MFA and privileged-action logging.
+	 
+Authorization combines RBAC with ownership and incident membership. Every sensitive endpoint must enforce access server-side.
+5. End-to-End User Journeys
+5.1 Onboarding & Verification
+1.       User enters mobile number and requests OTP.
+2.       Backend sends OTP and applies expiry, cooldown, attempt limits and abuse controls.
+3.       User verifies OTP and receives a secure session.
+4.       User reviews Terms, Privacy Notice and purpose-specific consents.
+5.       User completes profile and submits enrolment details/evidence.
+6.       Application enters Pending Review; admin reviews using approved manual checklist.
+7.       Admin approves, rejects or requests more information; user receives status and can resubmit/appeal as policy allows.
+8.       Approved profile displays platform verification status and digital ID.
+5.2 SOS Journey
+9.       User opens SOS and sees category, location readiness and data-sharing summary.
+10.    User activates SOS using configured hold/countdown interaction; cancellation is available during countdown.
+11.    Backend creates one incident using an idempotency key.
+12.    Push/SMS orchestration alerts emergency contacts and eligible opted-in verified nearby advocates.
+13.    Nearby selection expands through 2 km, 5 km and 10 km according to configured timers and recipient thresholds.
+14.    Recipients open incident, review permitted details and accept or decline.
+15.    Responder updates Accepted, On the Way and Reached; incident owner sees timestamped status.
+16.    Participants use incident group chat or one-to-one entry points; notes/media can be attached.
+17.    Owner or authorized operator closes incident; timeline and records are retained under policy.
+5.3 Directory and Legal Content
+18.    User searches police station/officer directory using location or text filters.
+19.    App displays only client-validated records with last-verified date and approved call/map actions.
+20.    Editor creates legal update/judgment item with source and court/date metadata.
+21.    Editorial and legal reviewer approve content before publication.
+22.    Users read, bookmark/share and follow source links; corrections are versioned and logged.
+6. Functional Requirements
+ID
+	Requirement
+	Priority
+	Acceptance summary
+	FR-01
+	Mobile registration and OTP login
+	Must
+	Valid OTP authenticates; invalid/expired/reused OTP rejected; rate limits enforced.
+	FR-02
+	Manual enrolment verification
+	Must
+	Evidence submission, admin review, decision, reason and audit history.
+	FR-03
+	Advocate profile and digital ID
+	Must
+	Profile management, accurate status and minimal QR validation data.
+	FR-04
+	SOS activation
+	Must
+	Countdown/cancel, duplicate prevention and incident creation.
+	FR-05
+	Emergency SMS and push
+	Must
+	Per-channel attempt state and truthful delivery wording.
+	FR-06
+	Live location and maps
+	Must
+	Consent-based updates, accuracy/freshness display and Maps integration.
+	FR-07
+	Nearby alerts 2/5/10 km
+	Must
+	Staged expansion, opt-in, deduplication and rate limits.
+	FR-08
+	Incident notes and media
+	Should
+	Text/voice/photo/video capture and secure upload.
+	FR-09
+	Offline SOS
+	Must
+	Available call/SMS fallback shown; no false sent/confirmed state.
+	FR-10
+	Category A/B
+	Must
+	Category stored and drives configured priority/escalation.
+	FR-11
+	Responder statuses
+	Must
+	Accepted, On the Way and Reached appear in timeline.
+	FR-12
+	Police/officer directory
+	Should
+	Search validated records with freshness metadata.
+	FR-13
+	SOS history
+	Must
+	Authorized paginated history and incident timeline.
+	FR-14
+	Privacy and consent
+	Must
+	Purpose-specific consent and permission guidance.
+	FR-15
+	Professional networking
+	Should
+	Feed, posts, comments, likes, sharing, connections and moderation.
+	FR-16
+	Premium WhatsApp sharing
+	Could
+	User-initiated file sharing subject to platform policy and entitlement.
+	FR-17
+	Legal blog/judgments
+	Should
+	Source attribution, review workflow and correction history.
+	 
+Priority: Must = production baseline; Should = expected initial product but can be phased; Could = optional/premium or later release.
+7. Detailed Feature Requirements
+7.1 Registration, OTP & Sessions
+·       Collect mobile number in E.164 format; collect profile fields after authentication.
+·       OTP generated/verified server-side, short expiry, resend cooldown, attempt limits, rate limiting and abuse monitoring.
+·       Never store OTP in plaintext. Use secure token storage backed by Android Keystore.
+·       Support logout, session revocation, refresh-token rotation and optional device/session management.
+·       Acceptance: expired, reused, incorrect and throttled OTP attempts fail safely.
+7.2 Manual Bar Council Enrolment Verification
+·       Capture Bar Council/state, enrolment number, enrolment date if applicable, name as shown on evidence and supporting documents.
+·       Statuses: Not Submitted, Submitted, Under Review, More Information Required, Approved, Rejected, Suspended, Appeal Pending.
+·       Admin review includes evidence viewer, checklist, reason codes, internal notes, reviewer and audit history.
+·       Client defines evidence rules, reviewer training, service target, escalation and appeal process.
+·       Use wording such as 'Platform verified – manual document review'; do not claim official Bar Council verification without authorization.
+7.3 Advocate Profile & Digital ID
+·       Profile: photo, display name, city/state, court/practice location, practice areas, years of practice (optional), bio and controlled contact visibility.
+·       Identity/enrolment edits may trigger re-review.
+·       Digital ID shows platform ID, photo, name, status and issue date; it is not government-issued ID.
+·       QR resolves to a minimal public validation page; never encode sensitive personal data in QR.
+7.4 SOS & Emergency Activation
+·       Prominent SOS entry point; configurable hold threshold and countdown; easy cancel affordance.
+·       Show category and disclosure of location/profile/notes/media shared and intended recipients.
+·       Create unique incident ID; idempotency prevents duplicate incidents on repeated taps/retries.
+·       Provide user-initiated call actions, incident group chat and one-to-one chat entry points.
+·       Active incident banner remains until closure; closing requires confirmation/reason.
+7.5 Emergency Communication
+·       FCM push to registered devices and configured SMS provider/contact destinations where consent and policy permit.
+·       Payload contains incident reference, category, sender display name and secure deep link; minimise lock-screen sensitive data.
+·       Track Pending, Submitted/Accepted by provider, Failed, Unknown and Delivered/Read only when reliably supplied.
+·       Use bounded retries, exponential backoff and idempotency; do not label provider acceptance as delivery.
+7.6 Live Location & Google Maps
+·       Request foreground location when needed with clear purpose rationale.
+·       Background location only if essential, policy-compliant and approved; prefer visible foreground service during active SOS where appropriate.
+·       Store coordinates with accuracy, timestamp and source; show last updated and accuracy radius.
+·       Updates use configurable time/distance thresholds; stop when incident closes or consent is withdrawn under policy.
+·       Handle approximate permission, denial, GPS disabled, stale fix, battery limits and network loss.
+·       Google Maps shows incident/responder markers and can hand off navigation to Maps app.
+7.7 Nearby Advocate Alerts
+·       Only verified advocates who opted in and meet availability settings are eligible.
+·       Sequential expansion: 2 km, then 5 km, then 10 km if configured timeout/minimum acceptance is not met.
+·       Client must approve stage timeout, recipient cap and expansion criteria.
+·       Deduplicate recipients across stages; apply cooldown and per-user rate limits.
+·       Use server-side geospatial queries; do not expose directory-wide or recipient coordinates.
+·       Decide whether exact incident location is withheld until acceptance; coarse location is the safer default.
+7.8 Emergency Notes, Voice Notes & Media
+·       Incident description and structured quick notes are user-entered.
+·       Voice recording is explicit, visible, timed and user-controlled; no covert recording.
+·       Photo/video uses system camera or Photo Picker where possible; show upload progress and retry.
+·       Store media in encrypted object storage with type, size, duration, uploader, checksum and timestamps.
+·       Apply file limits, malware scanning where feasible, signed URLs, access logging and retention policy.
+·       Do not promise evidentiary admissibility; legal counsel must approve evidence handling.
+7.9 Offline SOS
+·       Detect offline state and clearly identify available fallbacks.
+·       Where permitted, open SMS composer prefilled with recipient/message; user reviews and sends.
+·       Do not assume silent SEND_SMS is allowed by Android/Google Play.
+·       Offer phone-call action; disclose if GPS is unavailable or stale.
+·       Queue minimum encrypted metadata only if policy allows; label local save/SMS handoff distinctly from server-confirmed SOS.
+7.10 Categories A & B
+·       A: urgent response target under 30 minutes; B: response may be required after one hour.
+·       Targets are internal operational goals, not guarantees.
+·       Store category, selection/change actor and timestamps.
+·       Allow escalation during active incident; downgrade may require confirmation or admin policy.
+7.11 Responder Status
+·       States: Alerted, Accepted, On the Way, Reached, Declined, Cancelled, Timed Out.
+·       Allowed transitions: Alerted→Accepted/Declined; Accepted→On the Way/Cancelled; On the Way→Reached/Cancelled.
+·       Record actor, server timestamp, optional note and permitted location.
+·       Notify incident owner; show responder name, status and last update.
+·       Responder live location is not shared broadly by default.
+7.12 Police & Senior Officer Directory
+·       Search by state, district, city, station, officer, rank or designated role.
+·       Fields include agency, address, public phone/email if approved, service area, source and verified date.
+·       Client supplies/validates data; admin supports import, edit, deactivate and audit.
+·       Display last-verified date and data freshness disclaimer; do not imply police-system integration.
+7.13 SOS History & Incident Log
+·       List incidents by date, category, status and area; provide filters and pagination.
+·       Detail includes timeline, alert channel status, responder updates, notes and authorized media.
+·       Access limited to owner, permitted participants and authorized operations/admin roles.
+·       Retention, export, deletion and legal hold rules require client/legal approval.
+·       Log sensitive record and media access.
+7.14 Privacy & Consent
+·       Separate consent for nearby alerts, SOS location, profile discoverability, feed visibility and optional communications.
+·       Explain permissions contextually; denial must not block unrelated features.
+·       Show active sharing state and withdrawal controls with consequences.
+·       Provide policy links and data access/correction/deletion request route as applicable.
+·       Record consent version, timestamp, purpose, screen and withdrawal history.
+7.15 Professional Networking
+·       Feed supports text posts, permitted attachments, comments, likes, sharing and connections.
+·       Optional court/bar/location tags; never expose precise home/current location by default.
+·       Visibility controls, preview, report, block, mute and moderation tools.
+·       Pagination, abuse controls and duplicate-action prevention.
+·       Warn users not to post confidential client data, privileged communications or sensitive case documents.
+7.16 Premium WhatsApp Sharing & Broadcast
+·       Direct sharing via Android Sharesheet/WhatsApp intent where installed.
+·       Premium entitlement checked server-side and restored across devices.
+·       No unsupported personal-account bulk messaging automation or bypassing WhatsApp limits.
+·       WhatsApp Business Platform requires approved business account, templates, opt-in and provider integration.
+·       Handoff does not prove delivery; show truthful completion state.
+7.17 Legal Blog & Judgments
+·       Content includes legal updates, blogs, Supreme Court/High Court judgments and editorial explainers.
+·       Metadata: title, court, case/citation, decision/publication date, source URL/document, author, tags and review status.
+·       Workflow: Draft→Editorial Review→Legal Review→Approved→Published; correction/unpublish actions audited.
+·       Attribute official source and link to original; review copyright/terms before reproducing material.
+·       Distinguish editorial summary from original judgment; informational-not-legal-advice disclaimer.
+·       Daily cadence depends on source availability and editorial staffing; do not promise exhaustive coverage without SLA.
+8. UX, Navigation & Screen Inventory
+8.1 Primary Navigation
+Tab
+	Screens / content
+	Home
+	SOS CTA, readiness indicators, verification banner, legal highlights, community highlights.
+	SOS
+	Category, countdown, active incident, map, responder statuses, chat, notes/media, close.
+	Network
+	Feed, post composer, comments, connections, search, report/block.
+	Legal Updates
+	Judgment/blog list, filters, article detail, source links and bookmarks.
+	Profile
+	Profile, digital ID, verification, privacy, sessions and premium status.
+	 
+8.2 Screen Inventory
+Screen
+	Key elements/actions
+	Onboarding
+	Value proposition, terms/privacy links, continue.
+	Mobile / OTP
+	Country code, mobile input, OTP, resend timer, edit number, errors.
+	Consent & permissions
+	Purpose-specific disclosure, rationale, allow/skip where possible.
+	Profile setup
+	Photo, name, practice, enrolment data and evidence upload.
+	Verification status
+	Current status, submission date, admin note, resubmit/appeal.
+	Home dashboard
+	SOS action, category, readiness, directory and legal highlights.
+	SOS confirmation
+	Category, countdown, cancel, data-sharing summary.
+	Active SOS
+	Incident ID, map, alerts, responders, call/chat, notes/media, close.
+	Responder detail
+	Incident summary, permitted location, accept/decline.
+	Responder route
+	Map, navigation handoff, On the Way and Reached.
+	Incident history
+	Filters, incident cards, detail timeline and media.
+	Police directory
+	Search, filters, validated contact details, call/map.
+	Digital ID
+	Photo, name, platform ID, verification status, QR and disclaimer.
+	Network feed
+	Posts, comments, likes, share, report, create post.
+	Legal updates
+	Court/date filters, article and judgment detail, source.
+	Privacy settings
+	Consent, discoverability, location sharing and data requests.
+	Premium sharing
+	Entitlement, preview, share handoff and usage.
+	 
+8.3 UX & Accessibility
+·       SOS action is prominent and separated from destructive actions.
+·       Do not rely on colour alone; use text/icon/state labels.
+·       Support TalkBack, dynamic text, large touch targets and high contrast.
+·       Show stale location, offline state and notification failure explicitly.
+·       Use plain-language permission rationale and actionable error messages.
+·       Display local times consistently; backend stores UTC timestamps.
+9. SOS Lifecycle & Business Rules
+State
+	Meaning
+	Allowed next states
+	Draft
+	SOS screen opened, not activated.
+	Countdown, Cancelled
+	Countdown
+	Activation timer running.
+	Active, Cancelled
+	Active
+	Incident created; alerts/coordination underway.
+	Escalated, Resolved, Cancelled
+	Escalated
+	Higher urgency or wider radius applied.
+	Resolved, Cancelled
+	Resolved
+	Closed by owner/authorized operator.
+	Reopened only if policy permits
+	Cancelled
+	Cancelled before/after activation with reason.
+	No ordinary transition
+	 
+·       Server time is authoritative for event ordering; client time is diagnostic only.
+·       Create incident transactionally and use idempotency key to prevent duplicates.
+·       Record each expansion stage, radius, recipients count and outcome.
+·       Category timers and escalation rules are configurable and auditable.
+·       Direct local emergency call action remains available where device permits.
+·       App process death must not erase server-side active incident.
+·       Closing incident stops location updates and new alerts under approved policy.
+10. Data Model & Database Schema
+Recommended relational database: PostgreSQL with PostGIS for geospatial search. Use UUID primary keys and UTC timestamps. Store media in object storage, not database blobs.
+Entity
+	Suggested fields
+	users
+	id UUID PK, mobile_e164 UNIQUE, display_name, email, account_status, created_at, updated_at
+	user_sessions
+	id, user_id FK, device_id, refresh_token_hash, expires_at, revoked_at
+	advocate_profiles
+	id, user_id FK UNIQUE, photo_url, bio, practice_areas JSONB, city, state, court_tags, visibility
+	enrolment_applications
+	id, user_id FK, bar_council, enrolment_number_encrypted, enrolment_date, status, submitted_at, reviewer_id, reviewed_at, reason
+	verification_documents
+	id, application_id FK, object_key, mime_type, size, checksum, uploaded_at, scan_status
+	digital_advocate_ids
+	id, user_id FK, public_id UNIQUE, status, issued_at, revoked_at
+	consents
+	id, user_id FK, purpose, policy_version, granted, granted_at, withdrawn_at, source_screen
+	sos_incidents
+	id, owner_user_id FK, category, state, description, activated_at, resolved_at, closure_reason
+	incident_locations
+	id, incident_id FK, user_id FK, lat, lng, accuracy_m, captured_at, source
+	incident_responders
+	id, incident_id FK, responder_user_id FK, status, invited_at, accepted_at, on_the_way_at, reached_at
+	incident_events
+	id, incident_id FK, actor_id, event_type, payload JSONB, created_at
+	notification_deliveries
+	id, incident_id FK, recipient_id, channel, provider_ref, status, submitted_at, updated_at, failure_code
+	incident_media
+	id, incident_id FK, uploader_id, object_key, media_type, size, duration, checksum, created_at
+	incident_messages
+	id, incident_id FK, sender_id, message_type, body, media_id, created_at
+	emergency_contacts
+	id, user_id FK, name, phone_encrypted, relationship, enabled, consent_status
+	directory_entries
+	id, type, name, agency, address, phone, email, geo_point, source, verified_at, active
+	posts/comments/reactions
+	ids, author/user references, body/reaction, visibility/status, timestamps
+	connections
+	id, requester_id, addressee_id, status, created_at
+	content_items
+	id, type, title, slug, court, case_number, decision_date, source_url, summary, body, status, reviewer_id, published_at
+	premium_entitlements
+	id, user_id FK, product_code, status, valid_from, valid_until, provider_reference
+	audit_logs
+	id, actor_id, action, resource_type/id, reason, metadata JSONB, created_at
+	 
+10.1 Data Design Rules
+·       Encrypt enrolment numbers, phone numbers and sensitive fields at rest; use KMS/HSM-backed key management where available.
+·       Restrict coordinate access; do not put exact coordinates or sensitive identifiers in general logs/analytics.
+·       Index mobile, user, incident status/time, content publication and PostGIS geography fields.
+·       Use transactional outbox for reliable notification dispatch.
+·       Define retention/deletion for documents, SOS media, location, chat, feed and audit logs before launch.
+11. Backend API Requirements
+Use versioned REST/JSON over HTTPS, e.g. /api/v1. All writes require authentication, validation, server-side authorization, rate limits and idempotency where retryable.
+Method
+	Endpoint
+	Purpose
+	POST
+	/auth/otp/request
+	Request OTP; challenge and retry-after.
+	POST
+	/auth/otp/verify
+	Verify OTP; issue session tokens.
+	POST
+	/auth/logout
+	Revoke current session.
+	GET/PUT
+	/me/profile
+	Read/update profile.
+	POST
+	/verification/applications
+	Submit enrolment application.
+	GET
+	/verification/status
+	Get review status and admin request.
+	GET
+	/me/digital-id
+	Get digital ID/QR payload.
+	POST
+	/sos/incidents
+	Create incident; idempotency key required.
+	POST
+	/sos/incidents/{id}/cancel
+	Cancel incident.
+	POST
+	/sos/incidents/{id}/resolve
+	Resolve incident.
+	GET
+	/sos/incidents
+	Paginated history.
+	GET
+	/sos/incidents/{id}
+	Authorized detail/timeline.
+	POST
+	/sos/incidents/{id}/location
+	Submit location update.
+	POST
+	/sos/incidents/{id}/responders/{rid}/status
+	Update responder state.
+	POST
+	/sos/incidents/{id}/messages
+	Send incident message.
+	POST
+	/sos/incidents/{id}/media/upload-url
+	Get signed upload URL.
+	GET
+	/directory
+	Search police/officer directory.
+	GET/POST
+	/feed/posts
+	List/create feed posts.
+	POST
+	/feed/posts/{id}/comments
+	Add comment.
+	POST
+	/feed/posts/{id}/reactions
+	Add/remove reaction.
+	GET
+	/legal/content
+	List/filter legal content.
+	GET
+	/legal/content/{slug}
+	Read legal item.
+	POST
+	/premium/share-events
+	Record share handoff/usage if required.
+	 
+11.1 API Standards
+·       Consistent response envelope with success/data/error/correlation ID/server timestamp.
+·       Cursor pagination for feeds, directory and incident history.
+·       Object-level authorization for every incident/media endpoint.
+·       Short-lived signed object-storage URLs; no bucket credentials in app.
+·       OpenAPI specification, error catalogue, rate limits and backwards compatibility.
+·       Use WebSocket/SSE only if justified; FCM plus API refresh may suffice initially.
+12. Native Android Technical Architecture
+Layer
+	Recommendation
+	Language/UI
+	Kotlin, Jetpack Compose, Material 3; Views only where SDK integration requires.
+	Architecture
+	Feature-based modules, MVVM or MVI presentation, Clean Architecture boundaries.
+	Async
+	Coroutines and Flow with structured concurrency.
+	DI
+	Hilt.
+	Networking
+	Retrofit/OkHttp; Kotlin Serialization or Moshi; secure network configuration.
+	Persistence
+	Room for cache; DataStore for preferences; Android Keystore for secrets.
+	Background
+	WorkManager for deferrable sync/uploads; foreground service only for visible active-SOS location where justified.
+	Maps/location
+	Google Maps SDK and Fused Location Provider.
+	Push
+	Firebase Cloud Messaging.
+	Media
+	Android Photo Picker/camera intents and controlled recording UI.
+	Quality
+	JUnit, MockK, Turbine, Compose UI tests, Macrobenchmark, Baseline Profiles, crash/performance monitoring.
+	 
+12.1 Suggested Android Modules
+·       app: startup, navigation, dependency graph and application shell.
+·       core:common, network, database, datastore, security, design system, location and notifications.
+·       feature:auth, onboarding, profile, verification, sos, incident, directory, feed, legal, premium and settings.
+·       Each feature owns UI, ViewModel/state, domain use cases and data contracts; cross-feature dependencies use stable interfaces.
+12.2 SOS Android Flow
+23.    User action creates a local activation request with unique idempotency key.
+24.    ViewModel controls countdown/cancel state and prevents duplicate action.
+25.    Repository calls SOS API; backend persists incident and outbox event transactionally.
+26.    Notification workers dispatch recipient alerts; FCM/deep link refreshes incident state.
+27.    Location foreground service starts only with valid permission, visible notification and policy justification.
+28.    Location updates upload with accuracy and timestamp; encrypted queue is used only if approved.
+29.    On relaunch, app fetches active incident from backend and reconciles pending work.
+12.3 Offline & Process Resilience
+·       Persist minimum SOS draft data encrypted and with bounded retention.
+·       WorkManager is for retryable work, not a guarantee of immediate emergency delivery.
+·       Do not show server-confirmed active SOS until server confirms.
+·       Explain offline, GPS-disabled, permission-denied and SMS-handoff states.
+·       Avoid continuous location tracking outside active, disclosed use.
+13. Integrations
+Service
+	Purpose
+	Constraints
+	SMS OTP gateway
+	OTP login
+	Sender registration, templates, provider SLA and delivery callbacks.
+	Emergency SMS
+	Fallback/contacts
+	Carrier/device/permissions; user-mediated SMS may be required.
+	FCM
+	Push
+	Best-effort; token lifecycle and invalid-token cleanup.
+	Google Maps Platform
+	Map, marker, navigation
+	API key restrictions, billing, quotas and privacy disclosures.
+	Fused Location Provider
+	Location
+	Runtime permission, accuracy, battery and background limits.
+	Object storage
+	Documents/media
+	Encryption, signed URLs, malware scan and lifecycle rules.
+	WhatsApp / Sharesheet
+	File share
+	User-initiated; handoff is not delivery confirmation.
+	Legal source websites
+	Judgments/updates
+	Official source preference, copyright and terms review.
+	 
+14. Security, Privacy & Compliance
+14.1 Security Controls
+·       TLS 1.2+ for all traffic; secure authentication, short-lived access tokens, refresh rotation and revocation.
+·       Server-side RBAC and object-level authorization for profiles, incidents, media and admin actions.
+·       Encryption at rest for database, backups, object storage and sensitive fields.
+·       Android Keystore for device secrets; no private API keys embedded in APK.
+·       OTP abuse controls, rate limiting, fraud detection and secure account recovery.
+·       Audit admin access, verification decisions, incident access, exports, media access and role changes.
+·       SAST/DAST, dependency scanning, penetration testing, release signing and secure CI/CD.
+·       Redact tokens, phone numbers, enrolment data, coordinates and message content from logs.
+14.2 Privacy Requirements
+·       Identify data controller/processor roles and publish clear privacy notice.
+·       Collect only data needed for declared purposes; separate optional profile/community data.
+·       Location sharing is incident-scoped, visible and time-limited; no always-on tracking by default.
+·       Define retention/deletion for identity evidence, location, media, messages and content.
+·       Provide grievance/contact route and access/correction/deletion processes as applicable.
+·       Conduct privacy impact assessment for location, emergency contacts, media and identity verification.
+·       Obtain Indian legal review for applicable data protection, telecom, intermediary, copyright and Play policies; this PRD is not legal advice.
+14.3 Safety & Abuse Prevention
+·       Countdown/cancel and rate limits reduce accidental/malicious SOS without obstructing genuine emergencies.
+·       Provide report/block tools and responder misconduct reporting.
+·       Limit exact location to need-to-know roles and time-bound access.
+·       Do not expose sensitive incident details in public feed or lock-screen previews.
+·       Define human review and appeal for false SOS abuse or account restrictions.
+15. Non-Functional Requirements
+Area
+	Proposed requirement
+	Availability
+	Initial backend target 99.5% monthly, excluding third-party carrier/provider availability.
+	Performance
+	Typical read API p95 <500 ms; SOS create API p95 <2 seconds excluding external delivery.
+	Scalability
+	Capacity plan for concurrent users, SOS bursts, geospatial queries and media uploads.
+	Reliability
+	Idempotent incident creation, durable outbox, bounded retry and dead-letter monitoring.
+	Security
+	No unresolved critical/high security issues at production launch.
+	Accessibility
+	TalkBack, scalable text, adequate contrast, non-colour status indicators and large targets.
+	Compatibility
+	Agree Android API range; API 26+ is a planning baseline subject to SDK review.
+	Battery
+	Adaptive location frequency; no background tracking outside active use.
+	Localization
+	English initially; architecture supports future Indian languages.
+	Maintainability
+	Modular code, documented APIs, CI checks, automated tests and observability.
+	Disaster recovery
+	Encrypted backups, agreed RPO/RTO, restore drills and incident response plan.
+	 
+These are proposed targets and require validation through load tests, vendor SLAs, cost modelling and client sign-off.
+16. Offline & Notification Behaviour
+Condition
+	Expected behaviour
+	No internet, SMS app available
+	Open prefilled SMS composer; user reviews and sends; show handoff state.
+	No internet, no SMS capability
+	Offer call action and local instructions; never claim SOS sent.
+	GPS disabled
+	Offer settings guidance; incident may be created without coordinates if backend works.
+	Push token invalid
+	Mark token invalid and use configured fallback where allowed.
+	Media upload interrupted
+	Retain encrypted pending upload only if policy allows; retry later.
+	App killed during active SOS
+	Backend incident continues; app restores active incident on relaunch.
+	Notification permission denied
+	Explain reduced alert visibility; unrelated features remain usable.
+	 
+·       Separate emergency transactional notifications from marketing/community messages.
+·       Quiet hours may apply to non-emergency messages only under approved policy.
+·       Deep links must authenticate and re-authorize before showing incident details.
+·       Track channel states accurately; provider acceptance is not delivery.
+17. Admin Portal & Operations Requirements
+Module
+	Capabilities
+	Dashboard
+	Pending verification, active SOS summary, notification failures, content queue and system alerts.
+	User management
+	Search, view account/profile, suspend/reactivate with reason, manage roles.
+	Verification queue
+	Evidence viewer, checklist, approve/reject/request correction, appeals and audit.
+	SOS operations
+	Authorized incident view, timeline, delivery state, responders, escalation and closure notes.
+	Directory
+	Import/validate/edit/deactivate police and officer entries; data freshness review.
+	Moderation
+	Reported posts/comments, remove/restrict, warnings, appeals and audit.
+	Legal CMS
+	Draft, source/court/date metadata, editorial/legal approval, publish/unpublish/correct.
+	Premium
+	Entitlement lookup and manual adjustment with reason.
+	Configuration
+	Radius stages, timers, category policy, templates, file limits and feature flags.
+	Audit/reports
+	Search audit events and export approved reports.
+	 
+·       MFA for privileged admins; least privilege and separate admin session policy.
+·       Require reason for sensitive exports, suspensions, incident media access and manual entitlement changes.
+·       Log actor, timestamp, action, target, reason and before/after values where appropriate.
+18. Analytics & Reporting
+Event / metric
+	Purpose
+	otp_requested / verified / failed
+	Onboarding funnel, abuse and provider reliability.
+	verification_submitted / approved / rejected
+	Manual review throughput and quality.
+	sos_countdown / cancelled / activated
+	Usability and accidental activation.
+	sos_created / alert_stage_sent / responder_accepted
+	Emergency coordination funnel.
+	notification_channel_status
+	Push/SMS provider performance.
+	location_permission / accuracy
+	Location readiness and reliability.
+	responder_status_changed
+	Response progression and target analysis.
+	incident_resolved / closure_reason
+	Workflow outcome.
+	feed_reported / moderated
+	Community health.
+	legal_item_published / corrected
+	Editorial quality.
+	premium_share_handoff
+	Feature adoption; not proof of delivery.
+	 
+Analytics must not include exact coordinates, raw phone numbers, enrolment numbers, incident descriptions, media or private chat content.
+19. QA & Acceptance Criteria
+19.1 Test Strategy
+·       Unit tests for validation, state machines, use cases, repositories and permission logic.
+·       Integration tests for API contracts, transactions, outbox, geospatial radius selection and notification adapters.
+·       Android UI tests for OTP, SOS countdown/cancel, permissions, responder actions, media and accessibility.
+·       End-to-end tests with provider sandboxes and simulated push/SMS outcomes.
+·       Security tests for IDOR, privilege escalation, token theft, media URL access, rate limits and data leakage.
+·       Load tests for OTP bursts, SOS fan-out, radius expansion, feed pagination and media uploads.
+·       Device matrix across Android versions/OEMs, dual SIM, GPS, battery restrictions and permission states.
+·       Operational drills for provider outage, false SOS, database recovery and admin compromise.
+19.2 Core Acceptance Criteria
+Area
+	Pass criteria
+	OTP
+	Expiry/reuse/attempt limits work; tokens protected and revocable.
+	Verification
+	Status visible; decision has reviewer/time/reason; unverified never labelled verified.
+	Digital ID
+	Shows platform status and disclaimer; QR exposes only approved fields.
+	SOS
+	Countdown cancellable; one incident per activation; duplicate retries suppressed.
+	Notifications
+	Attempts recorded; provider acceptance not represented as delivery.
+	Location
+	Consent/active SOS required; accuracy/freshness shown; stop per policy.
+	Nearby alerts
+	2/5/10 km stages, deduplication, opt-out and rate limits pass.
+	Offline
+	No false server-confirmed state; SMS composer handoff distinguished.
+	Responders
+	Only authorized responders update status; owner sees ordered timeline.
+	History
+	Unauthorized users cannot access incidents, notes, media or precise location.
+	Directory
+	Only validated records marked as such; last-updated shown.
+	Feed
+	Report/block and moderation actions work.
+	Legal
+	Source attribution and reviewer approval required before publication.
+	WhatsApp
+	User-initiated sharing; no unsupported bulk automation or false delivery claim.
+	 
+19.3 Release Exit Criteria
+·       All Must requirements pass approved acceptance tests.
+·       No open critical/high security defects; remaining risks formally accepted.
+·       Privacy notice, consents, emergency disclaimers and retention policy approved.
+·       Production OTP/SMS, FCM and Maps configuration tested.
+·       Verification, directory, moderation and editorial SOPs staffed and published.
+·       Performance, crash and SOS load tests meet agreed thresholds.
+·       Play Store permissions, foreground service justifications and Data Safety disclosures reviewed.
+20. Delivery Plan, Risks & Open Decisions
+20.1 Suggested Delivery Phases
+Phase
+	Scope
+	Indicative duration
+	0 Discovery/governance
+	Workshops, legal/privacy, SOPs, verification checklist, data/API agreements, UX prototype.
+	2–3 weeks
+	1 Foundation
+	Auth, OTP, profile, RBAC, audit, CI/CD, Android shell and design system.
+	3–4 weeks
+	2 Identity
+	Enrolment submission, secure documents, manual admin review, digital ID.
+	2–3 weeks
+	3 Core SOS
+	SOS, incident service, push/SMS, categories, responder states and history.
+	4–6 weeks
+	4 Location/coordination
+	Maps, location, radius stages, chat, notes/media and offline fallback.
+	4–5 weeks
+	5 Directory/community
+	Police directory, feed, comments, connections, moderation and privacy.
+	3–5 weeks
+	6 Legal/premium
+	Legal CMS, judgment feed, sharing and premium entitlements.
+	2–4 weeks
+	7 Hardening/launch
+	Security/performance testing, pilot, operations drills and release.
+	3–4 weeks
+	 
+Durations are indicative and may overlap; final estimate depends on team size, vendor selection, portal scope, UI complexity, data readiness and operational SLAs.
+20.2 Risks & Mitigations
+Risk
+	Impact
+	Mitigation
+	No authorized Bar Council API
+	No automated verification
+	Manual review; accurate platform-verification wording.
+	Emergency delivery failure
+	User assumes help is coming
+	Truthful channel states, direct call/SMS actions, escalation SOP and disclaimers.
+	Android SMS restrictions
+	Silent SMS unavailable
+	Use SMS composer or approved provider; validate Play policy.
+	Background location/OEM limits
+	Location updates stop
+	Visible foreground service where justified; battery-aware design and status.
+	False SOS / alert fatigue
+	Responder trust declines
+	Countdown, rate limits, moderation and human review.
+	Sensitive location/media exposure
+	Personal safety/legal risk
+	Least privilege, encryption, audit, retention and privacy assessment.
+	Stale directory
+	Wrong contact details
+	Client data owner, periodic revalidation and last-verified date.
+	Judgment copyright/source issues
+	Legal/content liability
+	Official sources, attribution, licensing and legal review.
+	WhatsApp policy changes
+	Premium feature constrained
+	Supported sharing or approved Business API; no bulk automation.
+	Response target misread as guarantee
+	Trust/reputation/legal risk
+	Prominent disclaimer and clear target-vs-outcome reporting.
+	 
+20.3 Client Decisions Required
+Decision
+	Clarification required
+	Reason
+	SOS before verification
+	Available to all OTP users or verified users only?
+	Life-safety access vs abuse risk.
+	Emergency contacts
+	User-managed contacts, platform responders, operations centre or combination?
+	Recipient selection and consent.
+	Category rules
+	Exact timers, escalation and minimum responders?
+	Notification orchestration.
+	Radius stages
+	Timeout and recipient cap at 2/5/10 km?
+	Fan-out and responder experience.
+	Location visibility
+	Exact location on alert or coarse until acceptance?
+	Privacy and safety.
+	Chat
+	In-app backend or third-party SDK? Retention/moderation?
+	Cost and security.
+	Directory ownership
+	Who supplies, validates and refreshes data?
+	Accuracy and liability.
+	Media retention
+	Default period, legal hold and deletion?
+	Privacy and storage cost.
+	Verification SLA
+	Turnaround, appeals and suspension policy?
+	Operations staffing.
+	Legal content
+	Courts, sources, languages, cadence and editor?
+	Editorial capacity and licensing.
+	Premium model
+	Subscription/one-time, limits, billing and refunds?
+	Entitlements.
+	WhatsApp
+	Sharesheet only or Business Platform?
+	Feasibility and compliance.
+	Launch scope
+	States/cities/languages?
+	Directory and support readiness.
+	Emergency wording
+	Approved disclaimer, emergency numbers and escalation?
+	Legal approval.
+	 
+20.4 Definition of Done
+·       Requirements, UX, copy and acceptance criteria approved.
+·       Android, backend and admin implementations code-reviewed and tested.
+·       Security, privacy, legal, content and Play policy checks completed.
+·       Operational teams trained and SOPs published.
+·       Monitoring, alerts, backups, support and rollback plan active.
+·       Pilot feedback triaged and launch blockers resolved.
+Appendix A – Illustrative SOS Notification Payload
+{
+  "incidentId": "UUID",
+  "category": "A",
+  "createdAt": "2026-11-26T14:00:00Z",
+  "sender": {
+        "displayName": "Advocate display name",
+        "platformId": "ADV-XXXX",
+        "verificationStatus": "VERIFIED"
+  },
+  "location": {
+        "availability": "COARSE_OR_PRECISE_AS_POLICY",
+        "deepLink": "app://incident/UUID"
+  },
+  "action": "Open the app to review and respond"
+}
+Appendix B – Suggested Error States
+State
+	User-facing guidance
+	OTP_RATE_LIMITED
+	Too many attempts. Please wait before requesting another code.
+	LOCATION_PERMISSION_DENIED
+	Location unavailable. Continue without it or enable permission in Settings.
+	LOCATION_STALE
+	Last known location may be outdated; refresh when safe.
+	SOS_PENDING_NETWORK
+	Server has not confirmed SOS. Retry or use call/SMS fallback.
+	SMS_HANDOFF
+	Messaging app opened with a prefilled message. Review and send it.
+	PUSH_DISABLED
+	Notifications are disabled; alerts may not appear on this device.
+	MEDIA_UPLOAD_FAILED
+	Upload failed. Retry when connectivity is stable.
+	VERIFICATION_MORE_INFO
+	Additional information is required. Review the admin note and resubmit.
+	 
+Appendix C – Glossary
+Term
+	Definition
+	Advocate
+	Legal professional using the platform; eligibility follows client-approved manual process.
+	Digital Advocate ID
+	Platform-issued identity display, not government-issued identity.
+	SOS incident
+	User-created emergency record with alerts, location and responder workflow.
+	Responder
+	Verified, opted-in advocate or authorized role accepting an incident request.
+	FCM
+	Firebase Cloud Messaging for push notifications.
+	RBAC
+	Role-based access control.
+	Idempotency key
+	Unique request identifier preventing duplicate state changes during retries.
+	Outbox pattern
+	Backend pattern storing events transactionally before asynchronous dispatch.
+	RPO / RTO
+	Recovery Point Objective / Recovery Time Objective.
+	 
+Appendix D – Emergency Product Disclaimer
+The app is a coordination and communication tool. It cannot guarantee that a message, call, location update or assistance request will be received, acted upon or result in emergency assistance. Users should contact appropriate local emergency services directly when immediate danger exists. Response-time categories are internal service targets only. All disclaimers, legal notices, consent language and operational procedures require client legal approval.

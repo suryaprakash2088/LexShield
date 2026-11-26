@@ -1,0 +1,802 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HELPERS ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        ('email' in request.auth.token &&
+         request.auth.token.email == 'suryaprakash2088@gmail.com' &&
+         'email_verified' in request.auth.token &&
+         request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidBoundedStringList(arr, maxItems) {
+      return arr is list && arr.size() <= maxItems && (arr.size() == 0 || arr[0] is string);
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // --- DOMAIN VALIDATORS ---
+    function isValidUserProfile(data) {
+      return isValidString(data.userId, 1, 128) &&
+        isValidString(data.displayName, 1, 80) &&
+        isValidString(data.platformId, 4, 32) &&
+        data.verificationStatus in [
+          'NOT_SUBMITTED', 'SUBMITTED', 'UNDER_REVIEW',
+          'MORE_INFO_REQUIRED', 'APPROVED', 'REJECTED',
+          'SUSPENDED', 'APPEAL_PENDING'
+        ] &&
+        data.nearbyOptIn is bool &&
+        data.locationConsent is bool &&
+        data.discoverable is bool &&
+        data.feedPublic is bool &&
+        data.premiumActive is bool &&
+        (!('email' in data) || isValidString(data.email, 0, 120)) &&
+        (!('city' in data) || isValidString(data.city, 0, 60)) &&
+        (!('state' in data) || isValidString(data.state, 0, 60)) &&
+        (!('courtLocation' in data) || isValidString(data.courtLocation, 0, 100)) &&
+        (!('practiceAreas' in data) || isValidBoundedStringList(data.practiceAreas, 10)) &&
+        (!('yearsOfPractice' in data) || (data.yearsOfPractice is int && data.yearsOfPractice >= 0 && data.yearsOfPractice <= 80)) &&
+        (!('bio' in data) || isValidString(data.bio, 0, 400)) &&
+        (!('barCouncil' in data) || isValidString(data.barCouncil, 0, 80)) &&
+        (!('enrolmentNumberMasked' in data) || isValidString(data.enrolmentNumberMasked, 0, 40)) &&
+        (!('enrolmentDate' in data) || isValidString(data.enrolmentDate, 0, 30)) &&
+        (!('evidenceDocName' in data) || isValidString(data.evidenceDocName, 0, 120)) &&
+        (!('verificationNote' in data) || isValidString(data.verificationNote, 0, 300)) &&
+        (!('e2eePublicKeyB64' in data) || isValidString(data.e2eePublicKeyB64, 0, 512)) &&
+        (!('e2eeKeyFingerprint' in data) || isValidString(data.e2eeKeyFingerprint, 0, 128)) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAdvocateCard(data) {
+      return isValidString(data.userId, 1, 128) &&
+        isValidString(data.displayName, 1, 80) &&
+        isValidString(data.platformId, 4, 32) &&
+        data.verificationStatus in [
+          'NOT_SUBMITTED', 'SUBMITTED', 'UNDER_REVIEW',
+          'MORE_INFO_REQUIRED', 'APPROVED', 'REJECTED',
+          'SUSPENDED', 'APPEAL_PENDING'
+        ] &&
+        data.nearbyOptIn is bool &&
+        data.discoverable is bool &&
+        (!('city' in data) || isValidString(data.city, 0, 60)) &&
+        (!('state' in data) || isValidString(data.state, 0, 60)) &&
+        (!('courtLocation' in data) || isValidString(data.courtLocation, 0, 100)) &&
+        (!('practiceAreas' in data) || isValidBoundedStringList(data.practiceAreas, 10)) &&
+        (!('e2eePublicKeyB64' in data) || isValidString(data.e2eePublicKeyB64, 0, 512)) &&
+        (!('e2eeKeyFingerprint' in data) || isValidString(data.e2eeKeyFingerprint, 0, 128)) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidEmergencyContact(data) {
+      return isValidString(data.userId, 1, 128) &&
+        isValidString(data.name, 1, 80) &&
+        isValidString(data.phoneNumber, 4, 24) &&
+        isValidString(data.relationship, 1, 40) &&
+        data.enabled is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidConsent(data) {
+      return isValidString(data.userId, 1, 128) &&
+        isValidString(data.purpose, 2, 60) &&
+        isValidString(data.policyVersion, 1, 20) &&
+        data.granted is bool &&
+        isValidString(data.sourceScreen, 1, 60) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSosIncident(data) {
+      return isValidString(data.ownerUserId, 1, 128) &&
+        isValidString(data.ownerName, 1, 80) &&
+        isValidString(data.ownerPlatformId, 4, 32) &&
+        data.ownerVerified is bool &&
+        isValidString(data.idempotencyKey, 8, 80) &&
+        data.category in ['A', 'B'] &&
+        data.state in ['ACTIVE', 'ESCALATED', 'RESOLVED', 'CANCELLED'] &&
+        data.locationShared is bool &&
+        data.broadcastActive is bool &&
+        data.currentRadiusKm in [2, 5, 10] &&
+        data.alertedCount is int && data.alertedCount >= 0 && data.alertedCount <= 500 &&
+        data.smsChannelStatus in ['NOT_SENT', 'SUBMITTED', 'SMS_HANDOFF', 'FAILED'] &&
+        data.pushChannelStatus in ['PENDING', 'SUBMITTED', 'FAILED'] &&
+        isValidBoundedStringList(data.responderUids, 25) &&
+        (!('description' in data) || isValidString(data.description, 0, 500)) &&
+        (!('coarseArea' in data) || isValidString(data.coarseArea, 0, 120)) &&
+        (!('lat' in data) || (data.lat is number && data.lat >= -90.0 && data.lat <= 90.0)) &&
+        (!('lng' in data) || (data.lng is number && data.lng >= -180.0 && data.lng <= 180.0)) &&
+        (!('accuracyM' in data) || (data.accuracyM is number && data.accuracyM >= 0.0 && data.accuracyM <= 100000.0)) &&
+        (!('closureReason' in data) || isValidString(data.closureReason, 0, 200)) &&
+        (!('resolvedAt' in data) || isValidTimestamp(data.resolvedAt)) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidIncidentResponder(data) {
+      return isValidString(data.incidentId, 1, 128) &&
+        isValidString(data.ownerUserId, 1, 128) &&
+        isValidString(data.responderUserId, 1, 128) &&
+        isValidString(data.responderName, 1, 80) &&
+        isValidString(data.responderPlatformId, 4, 32) &&
+        data.status in ['ALERTED', 'ACCEPTED', 'ON_THE_WAY', 'REACHED', 'DECLINED', 'CANCELLED'] &&
+        (!('note' in data) || isValidString(data.note, 0, 240)) &&
+        (!('lat' in data) || (data.lat is number && data.lat >= -90.0 && data.lat <= 90.0)) &&
+        (!('lng' in data) || (data.lng is number && data.lng >= -180.0 && data.lng <= 180.0)) &&
+        (!('accuracyM' in data) || (data.accuracyM is number && data.accuracyM >= 0.0 && data.accuracyM <= 100000.0)) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidEncryptedMessage(data) {
+      return isValidString(data.incidentId, 1, 128) &&
+        isValidString(data.ownerUserId, 1, 128) &&
+        isValidBoundedStringList(data.participantUids, 25) &&
+        isValidString(data.senderId, 1, 128) &&
+        isValidString(data.senderName, 1, 80) &&
+        isValidString(data.ciphertextB64, 1, 8192) &&
+        isValidString(data.ivB64, 1, 64) &&
+        isValidString(data.senderPublicKeyB64, 1, 512) &&
+        isValidString(data.senderKeyFingerprint, 4, 128) &&
+        data.protocolVersion in ['ECDH-P256-AES256-GCM-v1'] &&
+        data.wrappedKeys is map && data.wrappedKeys.size() <= 25 &&
+        data.messageType in ['TEXT', 'NOTE', 'MEDIA_META'] &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidIncidentEvidence(data) {
+      return isValidString(data.incidentId, 1, 128) &&
+        isValidString(data.ownerUserId, 1, 128) &&
+        isValidBoundedStringList(data.participantUids, 25) &&
+        isValidString(data.uploaderId, 1, 128) &&
+        isValidString(data.uploaderName, 1, 80) &&
+        data.mediaType in ['NOTE', 'VOICE', 'PHOTO'] &&
+        isValidString(data.caption, 1, 500) &&
+        data.durationSec is int && data.durationSec >= 0 && data.durationSec <= 3600 &&
+        isValidString(data.sha256Checksum, 4, 128) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidIncidentEvent(data) {
+      return isValidString(data.incidentId, 1, 128) &&
+        isValidString(data.ownerUserId, 1, 128) &&
+        isValidBoundedStringList(data.participantUids, 25) &&
+        isValidString(data.actorId, 1, 128) &&
+        isValidString(data.actorName, 1, 80) &&
+        isValidString(data.eventType, 2, 60) &&
+        isValidString(data.summary, 1, 300) &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidFeedPost(data) {
+      return isValidString(data.authorId, 1, 128) &&
+        isValidString(data.authorName, 1, 80) &&
+        isValidString(data.authorPlatformId, 4, 32) &&
+        data.authorVerified is bool &&
+        isValidString(data.courtTag, 1, 60) &&
+        (!('city' in data) || isValidString(data.city, 0, 60)) &&
+        isValidString(data.body, 1, 1500) &&
+        data.visibility in ['NETWORK', 'CONNECTIONS'] &&
+        data.likeCount is int && data.likeCount >= 0 && data.likeCount <= 100000 &&
+        data.commentCount is int && data.commentCount >= 0 && data.commentCount <= 100000 &&
+        isValidBoundedStringList(data.likedByUids, 100) &&
+        isValidBoundedStringList(data.reportedByUids, 100) &&
+        data.moderationStatus in ['PUBLISHED', 'UNDER_REVIEW', 'REMOVED'] &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidFeedComment(data) {
+      return isValidString(data.postId, 1, 128) &&
+        isValidString(data.authorId, 1, 128) &&
+        isValidString(data.authorName, 1, 80) &&
+        isValidString(data.authorPlatformId, 4, 32) &&
+        isValidString(data.body, 1, 500) &&
+        data.visible is bool &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidLegalUpdate(data) {
+      return isValidString(data.authorId, 1, 128) &&
+        isValidString(data.title, 3, 200) &&
+        isValidString(data.court, 2, 100) &&
+        isValidString(data.caseNumber, 2, 100) &&
+        isValidString(data.decisionDate, 4, 40) &&
+        isValidString(data.sourceUrl, 8, 500) &&
+        isValidString(data.summary, 10, 1000) &&
+        isValidString(data.body, 10, 5000) &&
+        isValidString(data.reviewerName, 2, 80) &&
+        data.reviewStatus in ['PUBLISHED'] &&
+        isValidBoundedStringList(data.tags, 10) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSosAlert(data) {
+      return isValidString(data.ownerUserId, 1, 128) &&
+        isValidString(data.ownerName, 1, 80) &&
+        isValidString(data.ownerPlatformId, 4, 32) &&
+        data.category in ['A', 'B'] &&
+        data.status in ['ACTIVE', 'RESOLVED', 'CANCELLED'] &&
+        (!('message' in data) || isValidString(data.message, 0, 300)) &&
+        data.lat is number && data.lat >= -90.0 && data.lat <= 90.0 &&
+        data.lng is number && data.lng >= -180.0 && data.lng <= 180.0 &&
+        data.accuracyM is number && data.accuracyM >= 0.0 && data.accuracyM <= 100000.0 &&
+        isValidString(data.locationSource, 1, 40) &&
+        data.monitoringActive is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSafetyMonitoring(data) {
+      return isValidString(data.userId, 1, 128) &&
+        data.active is bool &&
+        data.lat is number && data.lat >= -90.0 && data.lat <= 90.0 &&
+        data.lng is number && data.lng >= -180.0 && data.lng <= 180.0 &&
+        data.accuracyM is number && data.accuracyM >= 0.0 && data.accuracyM <= 100000.0 &&
+        isValidString(data.locationSource, 1, 40) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    // --- COLLECTION RULES ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && isAdmin();
+
+      allow create: if isSignedIn() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        incoming().userId == request.auth.uid &&
+        incoming().verificationStatus in ['NOT_SUBMITTED', 'SUBMITTED'] &&
+        incoming().keys().hasAll([
+          'userId', 'displayName', 'platformId', 'verificationStatus',
+          'nearbyOptIn', 'locationConsent', 'discoverable', 'feedPublic',
+          'premiumActive', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'userId', 'displayName', 'email', 'platformId', 'city', 'state',
+          'courtLocation', 'practiceAreas', 'yearsOfPractice', 'bio',
+          'barCouncil', 'enrolmentNumberMasked', 'enrolmentDate',
+          'evidenceDocName', 'verificationStatus', 'verificationNote',
+          'e2eePublicKeyB64', 'e2eeKeyFingerprint', 'nearbyOptIn',
+          'locationConsent', 'discoverable', 'feedPublic', 'premiumActive',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            request.auth.uid == userId &&
+            (
+              incoming().verificationStatus == existing().verificationStatus ||
+              incoming().verificationStatus in ['NOT_SUBMITTED', 'SUBMITTED', 'APPEAL_PENDING']
+            ) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'email', 'city', 'state', 'courtLocation',
+              'practiceAreas', 'yearsOfPractice', 'bio', 'barCouncil',
+              'enrolmentNumberMasked', 'enrolmentDate', 'evidenceDocName',
+              'verificationStatus', 'verificationNote', 'e2eePublicKeyB64',
+              'e2eeKeyFingerprint', 'nearbyOptIn', 'locationConsent',
+              'discoverable', 'feedPublic', 'premiumActive', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+
+      match /emergency_contacts/{contactId} {
+        allow get: if isSignedIn() && isValidId(contactId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+          isValidId(contactId) &&
+          request.auth.uid == userId &&
+          incoming().userId == request.auth.uid &&
+          incoming().keys().hasAll(['userId', 'name', 'phoneNumber', 'relationship', 'enabled', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['userId', 'name', 'phoneNumber', 'relationship', 'enabled', 'createdAt', 'updatedAt']) &&
+          isValidEmergencyContact(incoming());
+
+        allow update: if isSignedIn() &&
+          isValidId(contactId) &&
+          request.auth.uid == userId &&
+          isValidEmergencyContact(incoming()) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phoneNumber', 'relationship', 'enabled', 'updatedAt']);
+
+        allow delete: if isSignedIn() && isValidId(contactId) && request.auth.uid == userId;
+      }
+
+      match /consents/{consentId} {
+        allow get: if isSignedIn() && isValidId(consentId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+          isValidId(consentId) &&
+          request.auth.uid == userId &&
+          incoming().userId == request.auth.uid &&
+          incoming().keys().hasAll(['userId', 'purpose', 'policyVersion', 'granted', 'sourceScreen', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['userId', 'purpose', 'policyVersion', 'granted', 'sourceScreen', 'createdAt', 'updatedAt']) &&
+          isValidConsent(incoming());
+
+        allow update: if isSignedIn() &&
+          isValidId(consentId) &&
+          request.auth.uid == userId &&
+          isValidConsent(incoming()) &&
+          incoming().userId == existing().userId &&
+          incoming().purpose == existing().purpose &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['policyVersion', 'granted', 'sourceScreen', 'updatedAt']);
+      }
+
+      match /safety_monitoring/{sessionId} {
+        allow get: if isSignedIn() && isValidId(sessionId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+          isValidId(sessionId) &&
+          request.auth.uid == userId &&
+          incoming().userId == request.auth.uid &&
+          incoming().keys().hasAll(['userId', 'active', 'lat', 'lng', 'accuracyM', 'locationSource', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['userId', 'active', 'lat', 'lng', 'accuracyM', 'locationSource', 'createdAt', 'updatedAt']) &&
+          isValidSafetyMonitoring(incoming());
+
+        allow update: if isSignedIn() &&
+          isValidId(sessionId) &&
+          request.auth.uid == userId &&
+          isValidSafetyMonitoring(incoming()) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['active', 'lat', 'lng', 'accuracyM', 'locationSource', 'updatedAt']);
+      }
+    }
+
+    match /advocate_directory/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (
+        request.auth.uid == userId ||
+        resource.data.discoverable == true ||
+        resource.data.nearbyOptIn == true ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.discoverable == true ||
+        resource.data.nearbyOptIn == true ||
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow create: if isSignedIn() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        incoming().userId == request.auth.uid &&
+        incoming().verificationStatus in ['NOT_SUBMITTED', 'SUBMITTED'] &&
+        incoming().keys().hasAll([
+          'userId', 'displayName', 'platformId', 'verificationStatus',
+          'nearbyOptIn', 'discoverable', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'userId', 'displayName', 'platformId', 'city', 'state',
+          'courtLocation', 'practiceAreas', 'verificationStatus',
+          'nearbyOptIn', 'discoverable', 'e2eePublicKeyB64',
+          'e2eeKeyFingerprint', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidAdvocateCard(incoming());
+
+      allow update: if isSignedIn() &&
+        isValidId(userId) &&
+        isValidAdvocateCard(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            request.auth.uid == userId &&
+            (
+              incoming().verificationStatus == existing().verificationStatus ||
+              incoming().verificationStatus in ['NOT_SUBMITTED', 'SUBMITTED', 'APPEAL_PENDING']
+            ) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'city', 'state', 'courtLocation',
+              'practiceAreas', 'verificationStatus', 'nearbyOptIn',
+              'discoverable', 'e2eePublicKeyB64', 'e2eeKeyFingerprint', 'updatedAt'
+            ])
+          )
+        );
+    }
+
+    match /sos_incidents/{incidentId} {
+      allow get: if isSignedIn() && isValidId(incidentId) && (
+        resource.data.ownerUserId == request.auth.uid ||
+        request.auth.uid in resource.data.responderUids ||
+        resource.data.broadcastActive == true ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.ownerUserId == request.auth.uid ||
+        request.auth.uid in resource.data.responderUids ||
+        resource.data.broadcastActive == true ||
+        isAdmin()
+      );
+
+      allow create: if isSignedIn() &&
+        isValidId(incidentId) &&
+        incoming().ownerUserId == request.auth.uid &&
+        incoming().state == 'ACTIVE' &&
+        incoming().keys().hasAll([
+          'ownerUserId', 'ownerName', 'ownerPlatformId', 'ownerVerified',
+          'idempotencyKey', 'category', 'state', 'locationShared',
+          'broadcastActive', 'currentRadiusKm', 'alertedCount',
+          'smsChannelStatus', 'pushChannelStatus', 'responderUids',
+          'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'ownerUserId', 'ownerName', 'ownerPlatformId', 'ownerVerified',
+          'idempotencyKey', 'category', 'state', 'description', 'coarseArea',
+          'lat', 'lng', 'accuracyM', 'locationShared', 'broadcastActive',
+          'currentRadiusKm', 'alertedCount', 'smsChannelStatus',
+          'pushChannelStatus', 'responderUids', 'closureReason',
+          'createdAt', 'updatedAt', 'resolvedAt'
+        ]) &&
+        isValidSosIncident(incoming());
+
+      allow update: if isSignedIn() &&
+        isValidId(incidentId) &&
+        isValidSosIncident(incoming()) &&
+        incoming().ownerUserId == existing().ownerUserId &&
+        incoming().idempotencyKey == existing().idempotencyKey &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            request.auth.uid == existing().ownerUserId &&
+            !(existing().state in ['RESOLVED', 'CANCELLED']) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'category', 'state', 'description', 'coarseArea',
+              'lat', 'lng', 'accuracyM', 'locationShared', 'broadcastActive',
+              'currentRadiusKm', 'alertedCount', 'smsChannelStatus',
+              'pushChannelStatus', 'closureReason', 'resolvedAt', 'updatedAt'
+            ])
+          ) ||
+          (
+            (existing().broadcastActive == true || request.auth.uid in existing().responderUids) &&
+            !(existing().state in ['RESOLVED', 'CANCELLED']) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['responderUids', 'updatedAt'])
+          )
+        );
+
+      match /responders/{responderId} {
+        allow get: if isSignedIn() && isValidId(responderId) && (
+          resource.data.ownerUserId == request.auth.uid ||
+          resource.data.responderUserId == request.auth.uid ||
+          isAdmin()
+        );
+        allow list: if isSignedIn() && (
+          resource.data.ownerUserId == request.auth.uid ||
+          resource.data.responderUserId == request.auth.uid ||
+          isAdmin()
+        );
+
+        allow create: if isSignedIn() &&
+          isValidId(responderId) &&
+          responderId == request.auth.uid &&
+          incoming().responderUserId == request.auth.uid &&
+          incoming().incidentId == incidentId &&
+          incoming().keys().hasAll([
+            'incidentId', 'ownerUserId', 'responderUserId', 'responderName',
+            'responderPlatformId', 'status', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'incidentId', 'ownerUserId', 'responderUserId', 'responderName',
+            'responderPlatformId', 'status', 'note', 'lat', 'lng', 'accuracyM',
+            'createdAt', 'updatedAt'
+          ]) &&
+          isValidIncidentResponder(incoming()) &&
+          exists(/databases/$(database)/documents/sos_incidents/$(incidentId)) &&
+          get(/databases/$(database)/documents/sos_incidents/$(incidentId)).data.ownerUserId == incoming().ownerUserId;
+
+        allow update: if isSignedIn() &&
+          isValidId(responderId) &&
+          isValidIncidentResponder(incoming()) &&
+          incoming().incidentId == existing().incidentId &&
+          incoming().ownerUserId == existing().ownerUserId &&
+          incoming().responderUserId == existing().responderUserId &&
+          incoming().createdAt == existing().createdAt &&
+          (
+            isAdmin() ||
+            (
+              request.auth.uid == responderId &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'note', 'lat', 'lng', 'accuracyM', 'updatedAt'])
+            )
+          );
+      }
+
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(messageId) && (
+          resource.data.ownerUserId == request.auth.uid ||
+          request.auth.uid in resource.data.participantUids ||
+          isAdmin()
+        );
+        allow list: if isSignedIn() && (
+          resource.data.ownerUserId == request.auth.uid ||
+          request.auth.uid in resource.data.participantUids ||
+          isAdmin()
+        );
+
+        allow create: if isSignedIn() &&
+          isValidId(messageId) &&
+          incoming().incidentId == incidentId &&
+          incoming().senderId == request.auth.uid &&
+          request.auth.uid in incoming().participantUids &&
+          incoming().keys().hasAll([
+            'incidentId', 'ownerUserId', 'participantUids', 'senderId', 'senderName',
+            'ciphertextB64', 'ivB64', 'senderPublicKeyB64', 'senderKeyFingerprint',
+            'protocolVersion', 'wrappedKeys', 'messageType', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'incidentId', 'ownerUserId', 'participantUids', 'senderId', 'senderName',
+            'ciphertextB64', 'ivB64', 'senderPublicKeyB64', 'senderKeyFingerprint',
+            'protocolVersion', 'wrappedKeys', 'messageType', 'createdAt', 'updatedAt'
+          ]) &&
+          isValidEncryptedMessage(incoming()) &&
+          exists(/databases/$(database)/documents/sos_incidents/$(incidentId)) &&
+          (
+            get(/databases/$(database)/documents/sos_incidents/$(incidentId)).data.ownerUserId == request.auth.uid ||
+            request.auth.uid in get(/databases/$(database)/documents/sos_incidents/$(incidentId)).data.responderUids
+          );
+      }
+
+      match /evidence/{evidenceId} {
+        allow get: if isSignedIn() && isValidId(evidenceId) && (
+          resource.data.ownerUserId == request.auth.uid ||
+          request.auth.uid in resource.data.participantUids ||
+          isAdmin()
+        );
+        allow list: if isSignedIn() && (
+          resource.data.ownerUserId == request.auth.uid ||
+          request.auth.uid in resource.data.participantUids ||
+          isAdmin()
+        );
+
+        allow create: if isSignedIn() &&
+          isValidId(evidenceId) &&
+          incoming().incidentId == incidentId &&
+          incoming().uploaderId == request.auth.uid &&
+          request.auth.uid in incoming().participantUids &&
+          incoming().keys().hasAll([
+            'incidentId', 'ownerUserId', 'participantUids', 'uploaderId', 'uploaderName',
+            'mediaType', 'caption', 'durationSec', 'sha256Checksum', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'incidentId', 'ownerUserId', 'participantUids', 'uploaderId', 'uploaderName',
+            'mediaType', 'caption', 'durationSec', 'sha256Checksum', 'createdAt', 'updatedAt'
+          ]) &&
+          isValidIncidentEvidence(incoming()) &&
+          exists(/databases/$(database)/documents/sos_incidents/$(incidentId)) &&
+          (
+            get(/databases/$(database)/documents/sos_incidents/$(incidentId)).data.ownerUserId == request.auth.uid ||
+            request.auth.uid in get(/databases/$(database)/documents/sos_incidents/$(incidentId)).data.responderUids
+          );
+      }
+
+      match /events/{eventId} {
+        allow get: if isSignedIn() && isValidId(eventId) && (
+          resource.data.ownerUserId == request.auth.uid ||
+          request.auth.uid in resource.data.participantUids ||
+          isAdmin()
+        );
+        allow list: if isSignedIn() && (
+          resource.data.ownerUserId == request.auth.uid ||
+          request.auth.uid in resource.data.participantUids ||
+          isAdmin()
+        );
+
+        allow create: if isSignedIn() &&
+          isValidId(eventId) &&
+          incoming().incidentId == incidentId &&
+          incoming().actorId == request.auth.uid &&
+          request.auth.uid in incoming().participantUids &&
+          incoming().keys().hasAll([
+            'incidentId', 'ownerUserId', 'participantUids', 'actorId', 'actorName',
+            'eventType', 'summary', 'createdAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'incidentId', 'ownerUserId', 'participantUids', 'actorId', 'actorName',
+            'eventType', 'summary', 'createdAt'
+          ]) &&
+          isValidIncidentEvent(incoming()) &&
+          exists(/databases/$(database)/documents/sos_incidents/$(incidentId)) &&
+          (
+            get(/databases/$(database)/documents/sos_incidents/$(incidentId)).data.ownerUserId == request.auth.uid ||
+            request.auth.uid in get(/databases/$(database)/documents/sos_incidents/$(incidentId)).data.responderUids ||
+            get(/databases/$(database)/documents/sos_incidents/$(incidentId)).data.broadcastActive == true
+          );
+      }
+    }
+
+    match /feed_posts/{postId} {
+      allow get: if isSignedIn() && isValidId(postId) && (
+        resource.data.authorId == request.auth.uid ||
+        (resource.data.moderationStatus == 'PUBLISHED' && resource.data.visibility == 'NETWORK') ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid ||
+        (resource.data.moderationStatus == 'PUBLISHED' && resource.data.visibility == 'NETWORK') ||
+        isAdmin()
+      );
+
+      allow create: if isSignedIn() &&
+        isValidId(postId) &&
+        incoming().authorId == request.auth.uid &&
+        incoming().moderationStatus == 'PUBLISHED' &&
+        incoming().likeCount == 0 &&
+        incoming().commentCount == 0 &&
+        incoming().keys().hasAll([
+          'authorId', 'authorName', 'authorPlatformId', 'authorVerified',
+          'courtTag', 'body', 'visibility', 'likeCount', 'commentCount',
+          'likedByUids', 'reportedByUids', 'moderationStatus', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'authorId', 'authorName', 'authorPlatformId', 'authorVerified',
+          'courtTag', 'city', 'body', 'visibility', 'likeCount', 'commentCount',
+          'likedByUids', 'reportedByUids', 'moderationStatus', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidFeedPost(incoming());
+
+      allow update: if isSignedIn() &&
+        isValidId(postId) &&
+        isValidFeedPost(incoming()) &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            request.auth.uid == existing().authorId &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['body', 'courtTag', 'city', 'visibility', 'updatedAt'])
+          ) ||
+          (
+            existing().moderationStatus == 'PUBLISHED' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['likeCount', 'likedByUids', 'commentCount', 'reportedByUids', 'moderationStatus', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isSignedIn() && isValidId(postId) && (request.auth.uid == resource.data.authorId || isAdmin());
+
+      match /comments/{commentId} {
+        allow get: if isSignedIn() && isValidId(commentId) && (resource.data.visible == true || isAdmin());
+        allow list: if isSignedIn() && (resource.data.visible == true || isAdmin());
+
+        allow create: if isSignedIn() &&
+          isValidId(commentId) &&
+          incoming().postId == postId &&
+          incoming().authorId == request.auth.uid &&
+          incoming().visible == true &&
+          incoming().keys().hasAll([
+            'postId', 'authorId', 'authorName', 'authorPlatformId', 'body', 'visible', 'createdAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'postId', 'authorId', 'authorName', 'authorPlatformId', 'body', 'visible', 'createdAt'
+          ]) &&
+          isValidFeedComment(incoming()) &&
+          exists(/databases/$(database)/documents/feed_posts/$(postId));
+
+        allow delete: if isSignedIn() && isValidId(commentId) && (request.auth.uid == resource.data.authorId || isAdmin());
+      }
+    }
+
+    match /legal_updates/{itemId} {
+      allow get: if isSignedIn() && isValidId(itemId) && (resource.data.reviewStatus == 'PUBLISHED' || isAdmin());
+      allow list: if isSignedIn() && (resource.data.reviewStatus == 'PUBLISHED' || isAdmin());
+
+      allow create: if isSignedIn() &&
+        isValidId(itemId) &&
+        isAdmin() &&
+        incoming().keys().hasAll([
+          'authorId', 'title', 'court', 'caseNumber', 'decisionDate',
+          'sourceUrl', 'summary', 'body', 'reviewerName', 'reviewStatus',
+          'tags', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'authorId', 'title', 'court', 'caseNumber', 'decisionDate',
+          'sourceUrl', 'summary', 'body', 'reviewerName', 'reviewStatus',
+          'tags', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidLegalUpdate(incoming());
+
+      allow update: if isSignedIn() &&
+        isValidId(itemId) &&
+        isAdmin() &&
+        incoming().createdAt == existing().createdAt &&
+        isValidLegalUpdate(incoming());
+    }
+
+    match /sos_alerts/{alertId} {
+      allow get: if isSignedIn() && isValidId(alertId) && (
+        resource.data.ownerUserId == request.auth.uid ||
+        resource.data.status == 'ACTIVE' ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.ownerUserId == request.auth.uid ||
+        resource.data.status == 'ACTIVE' ||
+        isAdmin()
+      );
+
+      allow create: if isSignedIn() &&
+        isValidId(alertId) &&
+        incoming().ownerUserId == request.auth.uid &&
+        incoming().status == 'ACTIVE' &&
+        incoming().keys().hasAll([
+          'ownerUserId', 'ownerName', 'ownerPlatformId', 'category', 'status',
+          'lat', 'lng', 'accuracyM', 'locationSource', 'monitoringActive',
+          'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'ownerUserId', 'ownerName', 'ownerPlatformId', 'category', 'status',
+          'message', 'lat', 'lng', 'accuracyM', 'locationSource', 'monitoringActive',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidSosAlert(incoming());
+
+      allow update: if isSignedIn() &&
+        isValidId(alertId) &&
+        isValidSosAlert(incoming()) &&
+        incoming().ownerUserId == existing().ownerUserId &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            request.auth.uid == existing().ownerUserId &&
+            existing().status == 'ACTIVE' &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'lat', 'lng', 'accuracyM', 'locationSource',
+              'monitoringActive', 'message', 'updatedAt'
+            ])
+          )
+        );
+    }
+  }
+}
